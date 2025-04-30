@@ -13,31 +13,20 @@ server.on('connection', (socket) => {
             const data = JSON.parse(message);
             console.log('📩 Mesaj primit:', data);
 
-            if (data.type === 'register') {
-                clients.set(String(data.user_id), socket);
-                console.log(`✅ Utilizator ${data.user_id} înregistrat`);
+            const type = data.type;
 
-                socket.send(JSON.stringify({
-                    type: 'registered',
-                    user_id: data.user_id
-                }));
-                return;
-            }
-
-            if (data.type === 'message') {
-                const targetSocket = clients.get(String(data.to));
-
-                if (targetSocket && targetSocket.readyState === WebSocket.OPEN) {
-                    targetSocket.send(JSON.stringify({
-                        type: 'toast',
-                        title: data.title,
-                        message: data.message,
-                        toastType: data.toastType || 'info'
-                    }));
-                    console.log(`🚀 Mesaj trimis către user ${data.to}`);
-                } else {
-                    console.log(`⚠️ Utilizatorul ${data.to} nu este conectat`);
-                }
+            switch (type) {
+                case 'register':
+                    handleRegister(socket, data);
+                    break;
+                case 'message':
+                    handleMessage(data);
+                    break;
+                case 'lead_assigned':
+                    handleLeadAssigned(data);
+                    break;
+                default:
+                    console.warn('⚠️ Tip necunoscut:', type);
             }
         } catch (error) {
             console.error('❌ Eroare la procesarea mesajului:', error.message);
@@ -54,3 +43,45 @@ server.on('connection', (socket) => {
         }
     });
 });
+
+// Handlers
+
+function handleRegister(socket, data) {
+    const userId = String(data.user_id);
+    clients.set(userId, socket);
+    console.log(`✅ Utilizator ${userId} înregistrat`);
+
+    socket.send(JSON.stringify({
+        type: 'registered',
+        user_id: userId
+    }));
+}
+
+function handleMessage(data) {
+    const targetSocket = clients.get(String(data.to));
+
+    if (targetSocket && targetSocket.readyState === WebSocket.OPEN) {
+        targetSocket.send(JSON.stringify({
+            type: 'toast',
+            title: data.title,
+            message: data.message,
+            toastType: data.toastType || 'info'
+        }));
+        console.log(`🚀 Mesaj trimis către user ${data.to}`);
+    } else {
+        console.log(`⚠️ Utilizatorul ${data.to} nu este conectat`);
+    }
+}
+
+function handleLeadAssigned(data) {
+    const targetSocket = clients.get(String(data.to));
+    if (targetSocket && targetSocket.readyState === WebSocket.OPEN) {
+        targetSocket.send(JSON.stringify({
+            type: 'toast',
+            title: 'Lead nou atribuit',
+            message: `Ai primit un lead nou (ID: ${data.lead_id}).`,
+            toastType: 'success'
+        }));
+        console.log(`📬 Notificare trimisă către user ${data.to} (lead ID: ${data.lead_id})`);
+    }
+}
