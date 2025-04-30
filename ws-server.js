@@ -1,5 +1,4 @@
 const WebSocket = require('ws');
-
 const server = new WebSocket.Server({ port: 3000 });
 const clients = new Map(); // user_id => socket
 
@@ -81,11 +80,13 @@ function handleLeadAssigned(data) {
     const targetSocket = clients.get(String(data.to));
     if (targetSocket && targetSocket.readyState === WebSocket.OPEN) {
         targetSocket.send(JSON.stringify({
-            type: 'toast',
+            type: 'lead_assigned',
             title: 'Lead nou atribuit',
-            message: data.message || `Ai primit un lead nou (ID: ${data.lead_id || 'necunoscut'}).`,
-            toastType: data.toastType || 'success'
+            message: `Ai primit un lead nou (ID: ${data.lead_id || 'necunoscut'}).`,
+            toastType: data.toastType || 'success',
+            lead_html: data.lead_html || '' // trimis din frontend
         }));
+
         console.log(`📬 Notificare trimisă către user ${data.to}`);
     } else {
         console.log(`❌ Nu am găsit socket activ pentru user ${data.to}`);
