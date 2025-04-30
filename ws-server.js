@@ -50,6 +50,7 @@ function handleRegister(socket, data) {
     const userId = String(data.user_id);
     clients.set(userId, socket);
     console.log(`✅ Utilizator ${userId} înregistrat`);
+    console.log('📃 Clienți curenți:', [...clients.keys()]);
 
     socket.send(JSON.stringify({
         type: 'registered',
@@ -74,6 +75,9 @@ function handleMessage(data) {
 }
 
 function handleLeadAssigned(data) {
+    console.log('🧠 În handleLeadAssigned, clienți activi:', [...clients.keys()]);
+    console.log('📦 Vrem să trimitem către:', String(data.to));
+
     const targetSocket = clients.get(String(data.to));
     if (targetSocket && targetSocket.readyState === WebSocket.OPEN) {
         targetSocket.send(JSON.stringify({
@@ -83,6 +87,7 @@ function handleLeadAssigned(data) {
             toastType: data.toastType || 'success'
         }));
         console.log(`📬 Notificare trimisă către user ${data.to}`);
+    } else {
+        console.log(`❌ Nu am găsit socket activ pentru user ${data.to}`);
     }
 }
-
