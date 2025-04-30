@@ -79,9 +79,10 @@ function handleLeadAssigned(data) {
         targetSocket.send(JSON.stringify({
             type: 'toast',
             title: 'Lead nou atribuit',
-            message: `Ai primit un lead nou (ID: ${data.lead_id}).`,
-            toastType: 'success'
+            message: data.message || `Ai primit un lead nou (ID: ${data.lead_id || 'necunoscut'}).`,
+            toastType: data.toastType || 'success'
         }));
-        console.log(`📬 Notificare trimisă către user ${data.to} (lead ID: ${data.lead_id})`);
+        console.log(`📬 Notificare trimisă către user ${data.to}`);
     }
 }
+
