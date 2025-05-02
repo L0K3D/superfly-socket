@@ -81,10 +81,10 @@ function handleLeadAssigned(data) {
     if (targetSocket && targetSocket.readyState === WebSocket.OPEN) {
         targetSocket.send(JSON.stringify({
             type: 'lead_assigned',
-            title: 'Lead nou atribuit',
-            message: `Ai primit un lead nou (ID: ${data.lead_id || 'necunoscut'}).`,
+            title: data.title || 'Lead nou atribuit',
+            message: data.message || 'Ai primit un lead nou.',
             toastType: data.toastType || 'success',
-            lead_html: data.lead_html || '' // trimis din frontend
+            lead_html: data.lead_html || ''
         }));
 
         console.log(`📬 Notificare trimisă către user ${data.to}`);
@@ -92,3 +92,4 @@ function handleLeadAssigned(data) {
         console.log(`❌ Nu am găsit socket activ pentru user ${data.to}`);
     }
 }
+
