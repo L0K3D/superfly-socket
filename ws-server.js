@@ -24,6 +24,9 @@ server.on('connection', (socket) => {
                 case 'lead_assigned':
                     handleLeadAssigned(data);
                     break;
+                case 'notification':
+                    handleNotification(data);
+                    break;
                 default:
                     console.warn('⚠️ Tip necunoscut:', type);
             }
@@ -93,3 +96,20 @@ function handleLeadAssigned(data) {
     }
 }
 
+function handleNotification(data) {
+    const targetSocket = clients.get(String(data.to));
+    if (targetSocket && targetSocket.readyState === WebSocket.OPEN) {
+        targetSocket.send(JSON.stringify({
+            type: 'notification',
+            payload: {
+                title: data.title || '',
+                message: data.message || '',
+                toastType: data.toastType || 'info',
+                extra: data.extra || null
+            }
+        }));
+        console.log(`🔔 Notificare trimisă către user ${data.to}`);
+    } else {
+        console.log(`❌ Utilizatorul ${data.to} nu este conectat`);
+    }
+}
