@@ -86,6 +86,7 @@ function handleLeadAssigned(data) {
     console.log('📦 Vrem să trimitem către:', String(data.to));
 
     broadcastToUser(data.to, {
+        user_id: String(data.to),
         type: 'lead_assigned',
         title: data.title || 'Lead nou atribuit',
         message: data.message || 'Ai primit un lead nou.',
