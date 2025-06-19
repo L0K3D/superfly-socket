@@ -103,6 +103,7 @@ function handleNotification(data) {
         targetSocket.send(JSON.stringify({
             type: 'notification',
             payload: {
+                user_id: String(data.to),
                 title: data.title || '',
                 message: data.message || '',
                 toastType: data.toastType || 'info',
