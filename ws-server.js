@@ -80,7 +80,7 @@ function handleRegister(socket, data) {
     console.log('📃 Clienți curenți:', [...clients.keys()]);
 
     socket.send(JSON.stringify({
-        version: '0.3',
+        version: '0.4',
         type: 'registered',
         user_id: userId
     }));
