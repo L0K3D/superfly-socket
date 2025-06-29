@@ -43,6 +43,8 @@ server.on('connection', (socket) => {
                 if (sockets.size === 0) {
                     clients.delete(userId);
                     console.log(`❌ Toți socket-ii închiși pentru user ${userId}`);
+
+                    broadcastUserDisconnected(userId);
                 }
                 break;
             }
@@ -51,6 +53,19 @@ server.on('connection', (socket) => {
 });
 
 // ========== HANDLERS ==========
+function broadcastUserDisconnected(userId) {
+    const payload = {
+        type: 'user_disconnected',
+        user_id: userId
+    };
+
+    console.log(`📤 Emit user_disconnected pentru user ${userId}`);
+
+    // Dacă vrei să notifici un alt sistem backend, poți trimite și prin HTTP fetch aici
+    // fetch('https://my-api.example.com/user-offline', { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'application/json' } });
+
+    // Sau poți trimite către alți useri conectați (admini, echipă etc), dacă ai logică de difuzare
+}
 
 function handleRegister(socket, data) {
     const userId = String(data.user_id);
