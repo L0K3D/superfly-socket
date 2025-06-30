@@ -1,14 +1,11 @@
 const WebSocket = require('ws');
-
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+const server = new WebSocket.Server({ port: 3000 });
 
 const clients = new Map(); // user_id => Set<socket>
 
-wss.on('connection', (socket) => {
+console.log('✅ WebSocket server pornit pe portul 3000');
+
+server.on('connection', (socket) => {
     console.log('🔌 Client conectat');
 
     socket.on('message', (message) => {
@@ -33,7 +30,7 @@ wss.on('connection', (socket) => {
                     console.warn('⚠️ Tip necunoscut:', type);
             }
         } catch (error) {
-            console.error('❌ Eroare mesaj:', error.message);
+            console.error('❌ Eroare la procesarea mesajului:', error.message);
         }
     });
 
@@ -67,7 +64,6 @@ function handleRegister(socket, data) {
         user_id: userId
     }));
 
-    // ✅ Trimitem tuturor userilor lista actuală
     broadcastUserList();
 }
 
@@ -87,6 +83,30 @@ function broadcastUserList() {
     }
 }
 
+function broadcastUserDisconnected(userId) {
+    const payload = {
+        type: 'user_disconnected',
+        user_id: userId
+    };
+
+    console.log(`📤 Emit user_disconnected pentru user ${userId}`);
+
+    let othersOnline = false;
+
+    for (const [otherUserId, sockets] of clients.entries()) {
+        if (otherUserId === userId) continue;
+        for (const s of sockets) {
+            if (s.readyState === WebSocket.OPEN) {
+                s.send(JSON.stringify(payload));
+                othersOnline = true;
+            }
+        }
+    }
+
+    if (othersOnline) {
+        broadcastUserList();
+    }
+}
 
 function handleMessage(data) {
     broadcastToUser(data.to, {
@@ -129,31 +149,5 @@ function broadcastToUser(userId, payload) {
         if (socket.readyState === WebSocket.OPEN) {
             socket.send(JSON.stringify(payload));
         }
-    }
-}
-
-function broadcastUserDisconnected(userId) {
-    const payload = {
-        type: 'user_disconnected',
-        user_id: userId
-    };
-
-    console.log(`📤 Emit user_disconnected pentru user ${userId}`);
-
-    let otherUsersExist = false;
-
-    for (const [otherUserId, sockets] of clients.entries()) {
-        if (otherUserId === String(userId)) continue;
-        for (const s of sockets) {
-            if (s.readyState === WebSocket.OPEN) {
-                s.send(JSON.stringify(payload));
-                otherUsersExist = true;
-            }
-        }
-    }
-
-    // ✅ Trimitem lista actualizată doar dacă există alte tab-uri active
-    if (otherUsersExist) {
-        broadcastUserList();
     }
 }
