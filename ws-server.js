@@ -1,5 +1,3 @@
-const express = require('express');
-const http = require('http');
 const WebSocket = require('ws');
 
 const app = express();
@@ -61,12 +59,34 @@ function handleRegister(socket, data) {
         clients.set(userId, new Set());
     }
     clients.get(userId).add(socket);
+
     console.log(`✅ Utilizator ${userId} înregistrat`);
+
     socket.send(JSON.stringify({
         type: 'registered',
         user_id: userId
     }));
+
+    // ✅ Trimitem tuturor userilor lista actuală
+    broadcastUserList();
 }
+
+function broadcastUserList() {
+    const connectedUsers = [...clients.keys()];
+    const payload = {
+        type: 'user_list',
+        online_users: connectedUsers
+    };
+
+    for (const sockets of clients.values()) {
+        for (const socket of sockets) {
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify(payload));
+            }
+        }
+    }
+}
+
 
 function handleMessage(data) {
     broadcastToUser(data.to, {
@@ -120,22 +140,20 @@ function broadcastUserDisconnected(userId) {
 
     console.log(`📤 Emit user_disconnected pentru user ${userId}`);
 
+    let otherUsersExist = false;
+
     for (const [otherUserId, sockets] of clients.entries()) {
         if (otherUserId === String(userId)) continue;
         for (const s of sockets) {
             if (s.readyState === WebSocket.OPEN) {
                 s.send(JSON.stringify(payload));
+                otherUsersExist = true;
             }
         }
     }
+
+    // ✅ Trimitem lista actualizată doar dacă există alte tab-uri active
+    if (otherUsersExist) {
+        broadcastUserList();
+    }
 }
-
-// ✅ HTTP endpoint pentru /connected-users
-app.get('/connected-users', (req, res) => {
-    const onlineUsers = [...clients.keys()];
-    res.json({ online: onlineUsers });
-});
-
-server.listen(PORT, () => {
-    console.log(`🚀 WebSocket + HTTP server ascultă pe portul ${PORT}`);
-});
