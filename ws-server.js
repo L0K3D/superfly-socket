@@ -148,3 +148,17 @@ function broadcastToUser(userId, payload) {
         }
     }
 }
+
+http.createServer((req, res) => {
+    if (req.method === 'GET' && req.url === '/connected-users') {
+        const onlineUsers = [...clients.keys()];
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ online: onlineUsers }));
+    } else {
+        res.writeHead(404);
+        res.end();
+    }
+}).listen(3001, () => {
+    console.log('🌐 HTTP endpoint disponibil pe portul 3001 pentru verificare useri conectați');
+});
+
