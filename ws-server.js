@@ -1,19 +1,21 @@
-const WebSocket = require('ws');
+const express = require('express');
 const http = require('http');
+const WebSocket = require('ws');
 
-const server = new WebSocket.Server({ port: 3000 });
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+
 const clients = new Map(); // user_id => Set<socket>
 
-console.log('✅ WebSocket server pornit pe portul 3000');
-
-server.on('connection', (socket) => {
+wss.on('connection', (socket) => {
     console.log('🔌 Client conectat');
 
     socket.on('message', (message) => {
         try {
             const data = JSON.parse(message);
-            console.log('📩 Mesaj primit:', data);
-
             const type = data.type;
 
             switch (type) {
@@ -33,7 +35,7 @@ server.on('connection', (socket) => {
                     console.warn('⚠️ Tip necunoscut:', type);
             }
         } catch (error) {
-            console.error('❌ Eroare la procesarea mesajului:', error.message);
+            console.error('❌ Eroare mesaj:', error.message);
         }
     });
 
@@ -45,7 +47,6 @@ server.on('connection', (socket) => {
                 if (sockets.size === 0) {
                     clients.delete(userId);
                     console.log(`❌ Toți socket-ii închiși pentru user ${userId}`);
-
                     broadcastUserDisconnected(userId);
                 }
                 break;
@@ -54,41 +55,14 @@ server.on('connection', (socket) => {
     });
 });
 
-// ========== HANDLERS ==========
-function broadcastUserDisconnected(userId) {
-    const payload = {
-        type: 'user_disconnected',
-        user_id: userId
-    };
-
-    console.log(`📤 Emit user_disconnected pentru user ${userId}`);
-
-    // ✅ Trimite mesaj către TOȚI ceilalți clienți activi (ex. admini/operatori)
-    for (const [otherUserId, sockets] of clients.entries()) {
-        if (otherUserId === String(userId)) continue; // nu trimite către sine
-
-        for (const s of sockets) {
-            if (s.readyState === WebSocket.OPEN) {
-                s.send(JSON.stringify(payload));
-            }
-        }
-    }
-}
-
 function handleRegister(socket, data) {
     const userId = String(data.user_id);
-
     if (!clients.has(userId)) {
         clients.set(userId, new Set());
     }
-
     clients.get(userId).add(socket);
-
     console.log(`✅ Utilizator ${userId} înregistrat`);
-    console.log('📃 Clienți curenți:', [...clients.keys()]);
-
     socket.send(JSON.stringify({
-        version: '0.4',
         type: 'registered',
         user_id: userId
     }));
@@ -101,23 +75,17 @@ function handleMessage(data) {
         message: data.message,
         toastType: data.toastType || 'info'
     });
-    console.log(`🚀 Mesaj trimis către user ${data.to}`);
 }
 
 function handleLeadAssigned(data) {
-    console.log('🧠 În handleLeadAssigned, clienți activi:', [...clients.keys()]);
-    console.log('📦 Vrem să trimitem către:', String(data.to));
-
     broadcastToUser(data.to, {
-        user_id: String(data.to),
         type: 'lead_assigned',
+        user_id: String(data.to),
         title: data.title || 'Lead nou atribuit',
         message: data.message || 'Ai primit un lead nou.',
         toastType: data.toastType || 'success',
         lead_html: data.lead_html || ''
     });
-
-    console.log(`📬 Notificare trimisă către user ${data.to}`);
 }
 
 function handleNotification(data) {
@@ -131,18 +99,11 @@ function handleNotification(data) {
             extra: data.extra || null
         }
     });
-
-    console.log(`🔔 Notificare trimisă către user ${data.to}`);
 }
-
-// ========== UTILITAR ==========
 
 function broadcastToUser(userId, payload) {
     const sockets = clients.get(String(userId));
-    if (!sockets || sockets.size === 0) {
-        console.log(`⚠️ Utilizatorul ${userId} nu are conexiuni active`);
-        return;
-    }
+    if (!sockets) return;
 
     for (const socket of sockets) {
         if (socket.readyState === WebSocket.OPEN) {
@@ -151,16 +112,30 @@ function broadcastToUser(userId, payload) {
     }
 }
 
-http.createServer((req, res) => {
-    if (req.method === 'GET' && req.url === '/connected-users') {
-        const onlineUsers = [...clients.keys()];
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ online: onlineUsers }));
-    } else {
-        res.writeHead(404);
-        res.end();
+function broadcastUserDisconnected(userId) {
+    const payload = {
+        type: 'user_disconnected',
+        user_id: userId
+    };
+
+    console.log(`📤 Emit user_disconnected pentru user ${userId}`);
+
+    for (const [otherUserId, sockets] of clients.entries()) {
+        if (otherUserId === String(userId)) continue;
+        for (const s of sockets) {
+            if (s.readyState === WebSocket.OPEN) {
+                s.send(JSON.stringify(payload));
+            }
+        }
     }
-}).listen(3001, () => {
-    console.log('🌐 HTTP endpoint disponibil pe portul 3001 pentru verificare useri conectați');
+}
+
+// ✅ HTTP endpoint pentru /connected-users
+app.get('/connected-users', (req, res) => {
+    const onlineUsers = [...clients.keys()];
+    res.json({ online: onlineUsers });
 });
 
+server.listen(PORT, () => {
+    console.log(`🚀 WebSocket + HTTP server ascultă pe portul ${PORT}`);
+});
