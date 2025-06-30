@@ -1,4 +1,6 @@
 const WebSocket = require('ws');
+const http = require('http');
+
 const server = new WebSocket.Server({ port: 3000 });
 const clients = new Map(); // user_id => Set<socket>
 
