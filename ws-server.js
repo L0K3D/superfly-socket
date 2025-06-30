@@ -61,10 +61,16 @@ function broadcastUserDisconnected(userId) {
 
     console.log(`📤 Emit user_disconnected pentru user ${userId}`);
 
-    // Dacă vrei să notifici un alt sistem backend, poți trimite și prin HTTP fetch aici
-    // fetch('https://my-api.example.com/user-offline', { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'application/json' } });
+    // ✅ Trimite mesaj către TOȚI ceilalți clienți activi (ex. admini/operatori)
+    for (const [otherUserId, sockets] of clients.entries()) {
+        if (otherUserId === String(userId)) continue; // nu trimite către sine
 
-    // Sau poți trimite către alți useri conectați (admini, echipă etc), dacă ai logică de difuzare
+        for (const s of sockets) {
+            if (s.readyState === WebSocket.OPEN) {
+                s.send(JSON.stringify(payload));
+            }
+        }
+    }
 }
 
 function handleRegister(socket, data) {
